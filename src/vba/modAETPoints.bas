@@ -244,6 +244,8 @@ Public Sub AET_ChainageOffset()
     Dim closest As Variant
     Dim beforePoint As Variant
     Dim afterPoint As Variant
+    Dim startPoint As Variant
+    Dim endPoint As Variant
     Dim distanceAlong As Double
     Dim totalLength As Double
     Dim sampleDistance As Double
@@ -261,22 +263,32 @@ Public Sub AET_ChainageOffset()
     End If
     queryPoint = ThisDrawing.Utility.GetPoint(, vbCrLf & "Pick a point to measure from the alignment: ")
     closest = alignment.GetClosestPointTo(queryPoint, False)
-    distanceAlong = alignment.GetDistAtPoint(closest)
     totalLength = AET_EntityLength(alignment)
-    sampleDistance = totalLength / 10000#
-    If sampleDistance < 0.000001 Then sampleDistance = 0.000001
-    If distanceAlong > sampleDistance Then
-        beforePoint = alignment.GetPointAtDist(distanceAlong - sampleDistance)
+    If alignment.ObjectName = "AcDbLine" Then
+        startPoint = alignment.StartPoint
+        endPoint = alignment.EndPoint
+        distanceAlong = Sqr((CDbl(closest(0)) - CDbl(startPoint(0))) ^ 2 + _
+                            (CDbl(closest(1)) - CDbl(startPoint(1))) ^ 2 + _
+                            (CDbl(closest(2)) - CDbl(startPoint(2))) ^ 2)
+        tangentX = CDbl(endPoint(0)) - CDbl(startPoint(0))
+        tangentY = CDbl(endPoint(1)) - CDbl(startPoint(1))
     Else
-        beforePoint = alignment.GetPointAtDist(0#)
+        distanceAlong = alignment.GetDistAtPoint(closest)
+        sampleDistance = totalLength / 10000#
+        If sampleDistance < 0.000001 Then sampleDistance = 0.000001
+        If distanceAlong > sampleDistance Then
+            beforePoint = alignment.GetPointAtDist(distanceAlong - sampleDistance)
+        Else
+            beforePoint = alignment.GetPointAtDist(0#)
+        End If
+        If distanceAlong + sampleDistance < totalLength Then
+            afterPoint = alignment.GetPointAtDist(distanceAlong + sampleDistance)
+        Else
+            afterPoint = alignment.GetPointAtDist(totalLength)
+        End If
+        tangentX = CDbl(afterPoint(0)) - CDbl(beforePoint(0))
+        tangentY = CDbl(afterPoint(1)) - CDbl(beforePoint(1))
     End If
-    If distanceAlong + sampleDistance < totalLength Then
-        afterPoint = alignment.GetPointAtDist(distanceAlong + sampleDistance)
-    Else
-        afterPoint = alignment.GetPointAtDist(totalLength)
-    End If
-    tangentX = CDbl(afterPoint(0)) - CDbl(beforePoint(0))
-    tangentY = CDbl(afterPoint(1)) - CDbl(beforePoint(1))
     offsetX = CDbl(queryPoint(0)) - CDbl(closest(0))
     offsetY = CDbl(queryPoint(1)) - CDbl(closest(1))
     offsetValue = Sqr(offsetX * offsetX + offsetY * offsetY)
